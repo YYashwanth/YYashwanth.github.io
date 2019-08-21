@@ -9,7 +9,7 @@ require "bourbon"
 GITHUB_REPONAME = "YYashwanth/YYashwanth.github.io"
 GITHUB_REPO_BRANCH = "master"
 
-SOURCE = "/"
+SOURCE = ""
 DEST = "_site"
 CONFIG = {
   'layouts' => File.join(SOURCE, "_layouts"),
