@@ -10,7 +10,7 @@ pagination:
   permalink: "/page/:num/"
 
 comments: true
-
+baseurl: ""
 destination: _site
 sass:
   sass_dir: _sass
