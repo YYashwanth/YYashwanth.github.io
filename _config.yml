@@ -11,42 +11,39 @@ pagination:
 
 comments: true
 
+source: source
 destination: _site
 sass:
   sass_dir: _sass
   style: compressed # expanded
 
 # SEO settings
-title: end2end
-description: "A free Jekyll theme for download"
-keywords: "Jekyll, theme, free, download, SEO, blog, web"
-url: http://nandomoreira.me
-baseurl: "/end2end"
+title: A Curious Engineer
+description: "An online journal to document my learning experiences in the field of DevOps, AWS and Automation "
+keywords: "AWS, DevOps, Python, Microservices, Automation"
+url: https://a.conversant.engineer
+baseurl: ""
 
-google_analytics: UA-52446115-1
-repo: http://github.com/nandomoreirame/end2end
-disqus_shortname: "nandothemes"
-disqus_site_shortname: "nandothemes"
+google_analytics: UA-143160087-1
+disqus_shortname: a-conversant-engineer
+disqus_site_shortname: a-conversant-engineer
 
 # Author settings
 author:
-  name: Fernando Moreira
-  job: Frontend Engineer
-  bio: "Enthusiast performance, responsive design and usability, always looking for the best project and good coffee."
-  thumb: /images/author.jpg
-  email: nandomoreira.me@gmail.com
-  url: https://nandomoreira.me/
-  github: https://github.com/nandomoreirame
-  twitter: https://twitter.com/umdevux
-  facebook: https://facebook.com/umdevux
-  linkedin: https://linkedin.com/in/nandomoreirame
+  name: Yashwanth Yellapragada
+  job: DevOps Engineer
+  bio: "A graduate DevOps Engineer with interests in AWS architecture design and implementation, microservices, automation and python scripting"
+  thumb: /images/dragon200.jpg
+  email: yyellapragada@gmail.com
+  url: https://a.conversant.engineer
+  github: https://github.com/YYashwanth
+  facebook: https://www.facebook.com/yashwanth.yellapragada
+  linkedin: https://www.linkedin.com/in/yyellapragada/
 
 # navbar pages
 navbar:
   - slug: about
     title: About
-  - slug: icons
-    title: Icons
   - slug: blog
     title: Blog
 
