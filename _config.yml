@@ -1,8 +1,4 @@
-# Build settings
-permalink: /blog/:year/:title/
-markdown: kramdown
-highlighter: pygments
-plugins: [jekyll-paginate-v2]
+
 
 pagination:
   enabled: true
