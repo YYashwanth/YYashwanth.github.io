@@ -1,0 +1,50 @@
+# Build settings
+permalink: /blog/:year/:title/
+markdown: kramdown
+highlighter: pygments
+plugins: [jekyll-paginate-v2]
+
+pagination:
+  enabled: true
+  per_page: 3
+  permalink: "/page/:num/"
+
+comments: true
+
+source: source
+destination: _site
+sass:
+  sass_dir: _sass
+  style: compressed # expanded
+
+# SEO settings
+title: A Curious Engineer
+description: "An online journal to document my learning experiences in the field of DevOps, AWS and Automation "
+keywords: "AWS, DevOps, Python, Microservices, Automation"
+url: https://a.conversant.engineer
+baseurl: ""
+
+google_analytics: UA-143160087-1
+disqus_shortname: a-conversant-engineer
+disqus_site_shortname: a-conversant-engineer
+
+# Author settings
+author:
+  name: Yashwanth Yellapragada
+  job: DevOps Engineer
+  bio: "A graduate DevOps Engineer with interests in AWS architecture design and implementation, microservices, automation and python scripting"
+  thumb: /images/dragon200.jpg
+  email: yyellapragada@gmail.com
+  url: https://a.conversant.engineer
+  github: https://github.com/YYashwanth
+  facebook: https://www.facebook.com/yashwanth.yellapragada
+  linkedin: https://www.linkedin.com/in/yyellapragada/
+
+# navbar pages
+navbar:
+  - slug: about
+    title: About
+  - slug: blog
+    title: Blog
+
+exclude: ["config.rb", "src", "Gemfile", "Gemfile.lock", "package.json","README.md", "Rakefile"]
