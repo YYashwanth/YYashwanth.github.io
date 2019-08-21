@@ -10,7 +10,7 @@ baseurl: ""
 destination: _site
 sass:
   sass_dir: _sass
-  style: compressed # expanded
+  style: compressed 
 
 # SEO settings
 title: A Curious Engineer
