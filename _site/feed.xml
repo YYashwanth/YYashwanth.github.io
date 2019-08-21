@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>A Curious Engineer</title>
+    <description>An online journal to document my learning experiences in the field of DevOps, AWS and Automation </description>
+    <link>http://localhost:4000/</link>
+    <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Wed, 21 Aug 2019 21:30:51 +1000</pubDate>
+    <lastBuildDate>Wed, 21 Aug 2019 21:30:51 +1000</lastBuildDate>
+    <generator>Jekyll v3.6.3</generator>
+    
+      <item>
+        <title>Layer 4 Load Balancing based on Source IP through HAProxy</title>
+        <description>&lt;p&gt;I am currently working on project where we are migrating workloads from on-prem datacenter to AWS and the applications being migrated had a requirement for session affinity based on the source IP address so we implemented a layer 4 load balancer in the architecture. AWS Network Load Balancer which comes to everyone’s mind when we say layer 4 load balancing on AWS looked like an obvious choice but upon investigating it, we found that it routes the requests based on source IP and source port. The source port, being a high port, kept changing for each request and this resulted in requests being sent to different backend servers and session affinity was not being held.&lt;/p&gt;
+
+&lt;p&gt;Because of all the above issues, we chose HAProxy which supports routing requests based on source ip apart from various other load balancing algorithms. But for this scenario, we used routing based on source ip. HAProxy only supports open source operating systems and we had to go with Amazon Linux 2 operating system.&lt;/p&gt;
+
+&lt;h2&gt; Installing HAProxy &lt;/h2&gt;
+
+&lt;p&gt;Once you login into the linux server, run:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;sudo yum install -y haproxy
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;This installs haproxy in the server.&lt;/p&gt;
+
+&lt;h2&gt; Configuring HAProxy to balance load on source IP &lt;/h2&gt;
+
+&lt;p&gt;Open the HAProxy configuration haproxy.cfg located in /etc/haproxy/haproxy.cfg. To open the configuration file run:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;cd /etc/haproxy
+sudo vi haproxy.cfg
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;Delete the content inside haproxy.cfg or the easier way is to delete the existing file and create a new file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-bash&quot;&gt;sudo rm -f haproxy.cfg
+sudo vi haproxy.cfg
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Defining the global variables&lt;/h2&gt;
+
+&lt;p&gt;There are certain variables that could be defined to be used globally across the configuration. Copy the below the lines in your /etc/haproxy/haproxy.cfg.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;
+global
+    log         127.0.0.1 local0          #redrecting the log messages to the local0
+    chroot      /var/lib/haproxy          #change current executing directory to haproxy
+    pidfile     /var/run/haproxy.pid      #creating a pid file to store process id
+    maxconn     50000                     #maximum connections
+    user        haproxy                   #username
+    group       haproxy                   #user group which contains the user haproxy
+    daemon
+    stats socket ipv4@127.0.0.1:9999 level admin #runtime interactive API of haproxy
+    stats socket /var/run/haproxy.sock mode 666 level admin #haproxy runtime API
+    stats timeout 2m                      #timeout of the stats
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Defining the default variables&lt;/h2&gt;
+
+&lt;p&gt;There are certain variables which would not be changed across the configuration and those variables can be defined together under the defaults section of the config. Copy the below lines after the global section.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;
+defaults
+    mode                    tcp                 #the mode of transport protocol
+    log                     global              # what services are being logged.
+    option                  dontlognull         #logging options
+    retries                 9999               
+    timeout queue           60m
+    timeout connect         30s
+    timeout client          60m
+    timeout server          60m
+    timeout check           60s
+    maxconn                 15000
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Defining the health dashboard&lt;/h2&gt;
+
+&lt;p&gt;We can have a dashboard for this server where we can see the health of the HAProxy server and the health of the backend servers. Copy the below lines after the defaults section&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;
+frontend stats                  #name of the frontend
+    bind *:8080                 #Binds the port number to access health dashboard
+    mode http                   #protocol mode for displaying the stats
+    stats enable                # enabling the stats
+    stats hide-version
+    stats uri /stats            #defining the uri endpoint path
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;The dashboard looks like this once we hit the server&lt;/p&gt;
+
+&lt;p&gt;&lt;img class=&quot;mb-2&quot; src=&quot;/images/haproxy-health.png&quot; alt=&quot;&quot; height=&quot;400&quot; width=&quot;900&quot; /&gt;&lt;/p&gt;
+
+&lt;h2&gt;Defining the front end to accept incoming connections&lt;/h2&gt;
+
+&lt;p&gt;We need to create a front end to for the users to send requests to. So, copy the lines below after the stats frontend&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;frontend haproxy_frontend                   #name of the frontend
+    bind *:80                               #listening on port 80
+    default_backend haproxy_backend         #routes to defined backend
+    option tcplog                           #logging format of the server
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Defining the back-end to route the incoming requests&lt;/h2&gt;
+
+&lt;p&gt;We need to create a backend definition in the config for the HAProxy to know where to route the incoming requests to. HAProxy uses stick tables to store the session affinity information and we can share that table with its peers so that no matter which HAProxy server the incoming request is routed to, the request is sent to the same backend server to which the affinity is present.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;backend haproxy_backend                    #name of the backend
+    mode tcp                               #mode of the traffic tcp or http
+    balance source                         #name of the routing algorithm. 
+    stick-table type ip size 20k expire 8h peers hapeers  #stick table,naming the peers
+    stick on src                           #store the source IP addresses into the stick table
+    server &amp;lt;backend server name1&amp;gt; &amp;lt;IP of backend server1&amp;gt;:80 check port 80 maxconn 5000
+    server &amp;lt;backend server name2&amp;gt; &amp;lt;IP of backend server2&amp;gt;:80 check port 80 maxconn 5000    
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;If you would like to read more about stick tables and different types of routing algorithms, please refer to 
+	&lt;a href=&quot;https://www.haproxy.com/blog/introduction-to-haproxy-stick-tables/&quot;&gt;Sticktables on HAProxy&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2&gt;Defining the Peers&lt;/h2&gt;
+
+&lt;p&gt;We define the HAProxy peers section by adding the below code block.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;peers hapeers
+    peer &amp;lt;name of peer 1&amp;gt; &amp;lt;IP of peer 1&amp;gt;:1024
+    peer &amp;lt;name of peer 2&amp;gt; &amp;lt;IP of peer 2&amp;gt;:1024
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Final Config&lt;/h2&gt;
+
+&lt;p&gt;Once the above contents are defined, the final config file should look like below:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;global
+    log         127.0.0.1 local0
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     50000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket ipv4@127.0.0.1:9999 level admin
+    stats socket /var/run/haproxy.sock mode 666 level admin
+    stats timeout 2m
+ 
+defaults
+    mode                    tcp
+    log                     global
+    option                  dontlognull
+    retries                 9999
+    timeout queue           60m
+    timeout connect         30s
+    timeout client          60m
+    timeout server          60m
+    timeout check           60s
+    maxconn                 15000
+ 
+frontend stats
+    bind *:8080
+    mode http
+    stats enable
+    stats hide-version
+    stats uri /stats
+ 
+frontend haproxy_frontend
+    bind *:80
+    default_backend haproxy_backend
+    option tcplog
+ 
+backend haproxy_backend
+    mode tcp
+    balance source
+    stick-table type ip size 20k expire 8h peers hapeers
+    stick on src
+    server &amp;lt;backend server name1&amp;gt; &amp;lt;IP of backend server1&amp;gt;:80 check port 80 maxconn 5000
+    server &amp;lt;backend server name2&amp;gt; &amp;lt;IP of backend server2&amp;gt;:80 check port 80 maxconn 5000
+ 
+peers hapeers
+    peer &amp;lt;name of peer 1&amp;gt; &amp;lt;IP of peer 1&amp;gt;:1024
+    peer &amp;lt;name of peer 2&amp;gt; &amp;lt;IP of peer 2&amp;gt;:1024
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;I know the article is pretty lengthy and I will not hold you up any longer. I will continue writing about the stick tables configured above and how to test if the stick tables are configured correctly in a different post.&lt;/p&gt;
+
+&lt;p&gt;As always, if you can help me out with an alternative approach to solve my problem stated above, please shoot an email at yyellapragada@gmail.com.&lt;/p&gt;
+
+&lt;p&gt;Always happy to learn!&lt;/p&gt;
+
+</description>
+        <pubDate>Mon, 12 Aug 2019 21:30:18 +1000</pubDate>
+        <link>http://localhost:4000/blog/2019/haproxy-aws/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2019/haproxy-aws/</guid>
+        
+        <category>AWS</category>
+        
+        <category>HAProxy</category>
+        
+        <category>EC2</category>
+        
+        <category>Load Balancing</category>
+        
+        
+        <category>AWS Architecting</category>
+        
+      </item>
+    
+      <item>
+        <title>Bootstrapping EC2 Windows Instance using SSM Documents through Cloudformation</title>
+        <description>&lt;p&gt;We often come across situations where we would like an EC2 instance up and running with certain softwares like Datadog, Sophos etc., installed and pre-configured. There might be other &lt;b&gt;sequence&lt;/b&gt; of events that we would like to carry out during the launch of an instance. We can run the installation/configuration commands in the required sequence through cloudformation but there is no way (within cloudformation) to know if the installation actually worked and if the instance is in the required state.&lt;/p&gt;
+
+&lt;p&gt;So, in order to create a proper sequence of installations and configurations, my manager and I created separate SSM documents for installing and configuring Datadog, Sophos and other softwares and associated those documents with the instance using &lt;b&gt;SSM Association&lt;/b&gt; resource type in Cloudformation.&lt;/p&gt;
+
+&lt;h2&gt; What is SSM Association resource type in Cloudformation? &lt;/h2&gt;
+
+&lt;p&gt;This resource creates a link between the document and the EC2 instance, so whenever the SSM document, which is linked to the EC2 instance, is updated, it is run again against that associated instance.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;Association:
+    Type: AWS::SSM::Association
+    DependsOn: WaitHandle
+    Properties:
+      Name: !Ref SSMDocumentName
+      Parameters:
+        CallbackHandle:
+          - Ref: WaitHandle
+        ItemName:
+          - Ref: ItemName
+      Targets:
+        - Key: InstanceIds
+          Values: [!Ref EC2InstanceId]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If you’d like to read more about the SSM Association Resource Type, refer &lt;a href=&quot;https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ssm-association.html&quot;&gt;this documentation by AWS.&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;We used the &lt;b&gt;DependsOn&lt;/b&gt; attribute in cloudformation to create of sequence of installations and configurations required to bootstrap the EC2 instance. But there is no way to know if a software installation is complete within the EC2 instance. To solve this, we created a &lt;b&gt;Wait Handle&lt;/b&gt; in the cloudformation template and passed that wait handle url as an input to the SSM document via the SSM Association resource type and accessed that wait handle from within the SSM document.&lt;/p&gt;
+
+&lt;h2&gt;What is DependsOn attribute in Cloudformation?&lt;/h2&gt;
+
+&lt;p&gt;This attribute helps in creating a sequence of steps if the order of execution is a priority.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;
+SSMSetTimeZone:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        EC2InstanceId:
+          !Ref EC2InstanceId
+        ItemName:
+          !Ref ItemName
+        SSMDocumentName: 'Set-USTimeZone'
+      TemplateURL: !FindInMap [ S3URLMap, ssm-create-association, !Ref Environment ]
+      
+SSMInstallAntiVirus:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: SSMSetTimeZone
+    Properties:
+      Parameters:
+        EC2InstanceId:
+          !Ref EC2InstanceId
+        ItemName:
+          !Ref ItemName
+        SSMDocumentName: 'Install-AntiVirus'
+      TemplateURL: !FindInMap [ S3URLMap, ssm-create-association, !Ref Environment ]
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;As you can see in the above code, the resource &lt;b&gt;SSMInstallAntiVirus&lt;/b&gt; only executes if &lt;b&gt;SSMSetTimeZone&lt;/b&gt; resource has been successfully executed.&lt;/p&gt;
+
+&lt;p&gt;If you’d like to read more about the DependsOn attribute, refer &lt;a href=&quot;https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html&quot;&gt;this documentation by AWS.&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2&gt;What are Wait Conditions in Cloudformation?&lt;/h2&gt;
+
+&lt;p&gt;We can make use of Wait Conditions and wait condition handle resources in Cloudformation to pause the creation of the stack and wait for a signal before resuming the stack creation.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-yaml&quot;&gt;
+Resources:
+  WaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  Association:
+    Type: AWS::SSM::Association
+    DependsOn: WaitHandle
+    Properties:
+      Name: !Ref SSMDocumentName
+      Parameters:
+        CallbackHandle:
+          - Ref: WaitHandle
+        ItemName:
+          - Ref: ItemName
+      Targets:
+        - Key: InstanceIds
+          Values: [!Ref EC2InstanceId]
+
+  Callback:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: WaitHandle
+    Properties:
+      Handle:
+        Ref: WaitHandle
+      Timeout: '1800'
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;As shown in the image, a &lt;b&gt; wait condition handle &lt;/b&gt; resource is created and passed as a parameter to the SSM document. And the &lt;b&gt;wait condition&lt;/b&gt; resource waits for a signal to be received on the url generated by the wait condition handle.&lt;/p&gt;
+
+&lt;p&gt;If you’d like to read more about creating wait conditions, refer &lt;a href=&quot;https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-waitcondition.html&quot;&gt;this documentation by AWS.&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;After the installation and configuration is done, we used &lt;b&gt;cfn-signal.exe&lt;/b&gt; to signal the cloudformation stack using the wait handle URL to mark the success of the installation/configuration.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-json&quot;&gt;{
+  &quot;description&quot;: &quot;Installing Datadog&quot;,
+  &quot;schemaVersion&quot;: &quot;2.2&quot;,
+  &quot;parameters&quot;: {
+    &quot;CallbackHandle&quot;: {
+      &quot;type&quot;: &quot;String&quot;,
+      &quot;description&quot;: &quot;CallBack URI&quot;
+    },
+    &quot;ItemName&quot;: {
+      &quot;type&quot;: &quot;String&quot;,
+      &quot;description&quot;: &quot;Not used&quot;
+    }
+  },
+  &quot;mainSteps&quot;: [
+    {
+      &quot;action&quot;: &quot;aws:runPowerShellScript&quot;,
+      &quot;name&quot;: &quot;InstallingDatadog&quot;,
+      &quot;inputs&quot;: {
+        &quot;runCommand&quot;: [
+          &quot;$arguments = @(\&quot;/i c:\\softwares\\DatadogInstallable.msi\&quot;,\&quot;/qn\&quot;,\&quot;/l*v c:\\programdata\\msi.log\&quot;,\&quot;APIKEY=ABC\&quot;)&quot;,
+          &quot;$exitcode = (Start-Process -FilePath C:\\Windows\\System32\\msiexec.exe -Wait -ArgumentList $arguments -Passthru).ExitCode&quot;,
+          &quot;echo \&quot;The exit code is $exitcode\&quot;&quot;
+        ]
+      }
+    },
+      {
+        &quot;action&quot;: &quot;aws:runPowerShellScript&quot;,
+        &quot;name&quot;: &quot;SignalCallBack&quot;,
+        &quot;inputs&quot;: {
+          &quot;runCommand&quot;: [
+            &quot;$CallBack = &amp;lt;CallbackHandle Parameter&amp;gt;&quot;,
+            &quot;cfn-signal.exe $CallBack&quot;
+          ]
+        }
+      }
+  ]
+}
+
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt; What is &lt;b&gt; cfn-signal &lt;/b&gt; ? &lt;/h2&gt;
+
+&lt;p&gt;As part of AWS Cloudformation, we get 4 helper python scripts&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;cfn-init&lt;/li&gt;
+    &lt;li&gt;cfn-signal&lt;/li&gt;
+    &lt;li&gt;cfn-get-metadata&lt;/li&gt;
+    &lt;li&gt;cfn-hup&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;These scripts help in the installation and preparation of an instance as required. For more information on the helper scripts, refer &lt;a href=&quot;https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-helper-scripts-reference.html&quot;&gt;this documentation by AWS.&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;This way, it is easy to coordinate the process of bootstrapping the windows instance along with the entire cloudformation stack creation.&lt;/p&gt;
+
+&lt;p&gt;This is one of the many ways to coordinate the creation of a cloudformation stack and bootstrapping an instance. If you think you know a better way, please do let me know at yyellapragada@gmail.com.&lt;/p&gt;
+
+&lt;p&gt;Always happy to learn!&lt;/p&gt;
+
+</description>
+        <pubDate>Tue, 02 Jul 2019 22:15:18 +1000</pubDate>
+        <link>http://localhost:4000/blog/2019/cfn-ssm/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2019/cfn-ssm/</guid>
+        
+        <category>AWS</category>
+        
+        <category>Automation</category>
+        
+        <category>Cloudformation</category>
+        
+        <category>AWS Systems Manager</category>
+        
+        
+        <category>AWS Automation</category>
+        
+      </item>
+    
+      <item>
+        <title>What if someone disables CloudTrail in a Centralised Logging Scenario?</title>
+        <description>&lt;p&gt;This article details one of the many ways of addressing the scenario where logging is crucial and a centralised logging account is setup in a multi account architecture. Of course, you can enforce service control policies at the root level to avoid any tampering with the logging mechanism, which is a proactive approach, but I wanted to talk about the reactive approach: What if someone disables CloudTrail logging in one of the member accounts?&lt;/p&gt;
+
+&lt;p&gt;I did some research online to find a AWS Organizations centric approach for enforcing Cloudtrail and all I could find was an approach tailored for a single account on Linux Academy. I took the learnings from that tutorial and tried an approach to enforce CloudTrail in a multi-account scenario.&lt;/p&gt;
+
+&lt;p&gt;To better explain the situation, consider the below scenario:&lt;/p&gt;
+
+&lt;p&gt;Acme Corp. is an enterprise comprised of over 5000 employees and 100 departments. They are in the transition period from on-premise to cloud infrastructure and want to isolate certain departments per industry’s standard best practices. The solution architect, responsible for the migration, started with a root account (parent account) and created multiple member accounts (child accounts) and organized them into units. To ensure that the architecture meets certain auditing and compliance standards, the architect recommended a central logging and auditing account which collects logs from all the member accounts and stores them.&lt;/p&gt;
+
+&lt;p&gt;But what if someone tries to disable the logging in one of the member accounts?&lt;/p&gt;
+
+&lt;p&gt;And if you are new to the concepts and functionalities of AWS Organisations, cross account access roles, creating centralised logging, please refer to the below links:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;https://docs.aws.amazon.com/organizations/latest/userguide/orgs_tutorials_basic.html&quot;&gt;Setup AWS organization and member accounts&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_cross-account-with-roles.html&quot;&gt;Enable Cross-Account access&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-getting-started.html&quot;&gt;Enable cloudtrail on the member accounts&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-receive-logs-from-multiple-accounts.html&quot;&gt;Create central logging repository on AWS S3 for cloudtrail logs.&lt;/a&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;b&gt;Actions to be taken in Parent Account&lt;b&gt;&lt;/b&gt;&lt;/b&gt;&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Once all the prerequisites have been met, navigate to your parent account’s (root account) CloudWatch console and select “Event Bus” and add a permission for the child account to send events to the parent account by entering the account number of the child account.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img class=&quot;mb-2&quot; src=&quot;/images/parent1.png&quot; alt=&quot;&quot; height=&quot;400&quot; width=&quot;900&quot; /&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Navigate to the Lambda console and create a function and use the code below. The code  is well documented but feel free to drop in a comment for further clarification.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-python&quot;&gt;import boto3
+
+def lambda_handler(event, context):
+     # create an STS client object that represents a live connection
+	sts_client = boto3.client('sts')    
+	sender_account_id = event['account']
+    sender_account_region = event['region']
+    
+    
+    # Call the assume_role method of the STSConnection object and pass the role
+    assumedRoleObject = sts_client.assume_role(
+        RoleArn=&quot;arn:aws:iam::&quot;+sender_account_id+&quot;:role/AccesstoDev&quot;,
+        RoleSessionName=&quot;AccesstoDev&quot;
+    )
+    
+   #get the temporary credentials that can be used to make subsequent API calls
+    credentials = assumedRoleObject['Credentials']
+    
+    # Use the temporary credentials that AssumeRole returns to make a 
+    # connection to Amazon Cloudtrail  
+    cloudtrail_resource = boto3.client(
+        'cloudtrail',
+        aws_access_key_id = credentials['AccessKeyId'],
+        aws_secret_access_key = credentials['SecretAccessKey'],
+        aws_session_token = credentials['SessionToken'],
+    )
+
+    # Use the Amazon cloudtrail resource object that is now configured to start the trail.
+  
+    cloudtrail_resource.start_logging(Name='arn:aws:cloudtrail:'+sender_account_region+':'+sender_account_id+':trail/devaccount-trail')
+
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;PS: Exception handlers are being included and the work is in progress. The code will be updated once done. For a PoC, this serves the purpose&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Configure a rule on CloudWatch which triggers a lambda function and sends notification on a SNS topic for every CloudTrail event it receives. To be precise for our requirement, we can specify the name of the event for which the CloudWatch rule has to fire up. Let’s configure the CloudWatch rule to trigger on “StopLogging” event name.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Add another target as a SNS topic, if you want an administrator to be notified of this event. Select the SNS topic you created as the target.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img class=&quot;mb-2&quot; src=&quot;/images/parent2.png&quot; alt=&quot;&quot; height=&quot;400&quot; width=&quot;900&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;b&gt;Actions to be completed in Child Account&lt;b&gt;&lt;/b&gt;&lt;/b&gt;&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;Navigate to the CloudWatch console and create a rule to send any notification to the event bus created in the parent account. Select the “Event bus in another account” as target and enter the account number of the account where we created the event bus.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Now all we need to do is turn of the CloudTrail in the child account and watch it turn itself back on.&lt;/p&gt;
+
+&lt;p&gt;If you think of a better way to do it, please do let me know at yyellapragada@gmail.com.&lt;/p&gt;
+</description>
+        <pubDate>Thu, 06 Jun 2019 02:39:18 +1000</pubDate>
+        <link>http://localhost:4000/blog/2019/enforcing-cloudtrail/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2019/enforcing-cloudtrail/</guid>
+        
+        <category>AWS</category>
+        
+        <category>Automation</category>
+        
+        <category>Governance</category>
+        
+        <category>Logging</category>
+        
+        
+        <category>AWS Automation</category>
+        
+      </item>
+    
+  </channel>
+</rss>
