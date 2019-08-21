@@ -3,10 +3,10 @@
   <channel>
     <title>A Curious Engineer</title>
     <description>An online journal to document my learning experiences in the field of DevOps, AWS and Automation </description>
-    <link>http://localhost:4000/</link>
-    <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Wed, 21 Aug 2019 22:10:59 +1000</pubDate>
-    <lastBuildDate>Wed, 21 Aug 2019 22:10:59 +1000</lastBuildDate>
+    <link>https://a.conversant.engineer/</link>
+    <atom:link href="https://a.conversant.engineer/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Wed, 21 Aug 2019 22:20:46 +1000</pubDate>
+    <lastBuildDate>Wed, 21 Aug 2019 22:20:46 +1000</lastBuildDate>
     <generator>Jekyll v3.6.3</generator>
     
       <item>
@@ -187,8 +187,8 @@ peers hapeers
 
 </description>
         <pubDate>Mon, 12 Aug 2019 21:30:18 +1000</pubDate>
-        <link>http://localhost:4000/blog/2019/haproxy-aws/</link>
-        <guid isPermaLink="true">http://localhost:4000/blog/2019/haproxy-aws/</guid>
+        <link>https://a.conversant.engineer/blog/2019/haproxy-aws/</link>
+        <guid isPermaLink="true">https://a.conversant.engineer/blog/2019/haproxy-aws/</guid>
         
         <category>AWS</category>
         
@@ -366,8 +366,8 @@ Resources:
 
 </description>
         <pubDate>Tue, 02 Jul 2019 22:15:18 +1000</pubDate>
-        <link>http://localhost:4000/blog/2019/cfn-ssm/</link>
-        <guid isPermaLink="true">http://localhost:4000/blog/2019/cfn-ssm/</guid>
+        <link>https://a.conversant.engineer/blog/2019/cfn-ssm/</link>
+        <guid isPermaLink="true">https://a.conversant.engineer/blog/2019/cfn-ssm/</guid>
         
         <category>AWS</category>
         
@@ -470,8 +470,8 @@ def lambda_handler(event, context):
 &lt;p&gt;If you think of a better way to do it, please do let me know at yyellapragada@gmail.com.&lt;/p&gt;
 </description>
         <pubDate>Thu, 06 Jun 2019 02:39:18 +1000</pubDate>
-        <link>http://localhost:4000/blog/2019/enforcing-cloudtrail/</link>
-        <guid isPermaLink="true">http://localhost:4000/blog/2019/enforcing-cloudtrail/</guid>
+        <link>https://a.conversant.engineer/blog/2019/enforcing-cloudtrail/</link>
+        <guid isPermaLink="true">https://a.conversant.engineer/blog/2019/enforcing-cloudtrail/</guid>
         
         <category>AWS</category>
         
