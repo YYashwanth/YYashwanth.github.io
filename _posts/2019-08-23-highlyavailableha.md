@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Designing a highly available and self healing HAProxy cluster"
-description: "Designing a highly available HAProxy cluster which can configure themselves using Lambda, SSM documents"
+description: "Designing a highly available HAProxy cluster using CloudWatch, Lambda and SSM documents"
 date: 2019-08-23 11:30:18
 comments: true
 description: "Highly Available, Self Healing HAProxy Cluster"

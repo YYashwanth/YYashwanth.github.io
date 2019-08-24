@@ -6,7 +6,7 @@ pagination:
   permalink: "/page/:num/"
 
 comments: true
-baseurl: ""
+paginate_path: "/blog/page:num/"
 destination: _site
 sass:
   sass_dir: _sass
