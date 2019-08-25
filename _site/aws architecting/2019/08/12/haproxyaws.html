@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Layer 4 Load Balancing based on Source IP through HAProxy</title>
+<meta name="description" content="I am currently working on project where we are migrating workloads from on-prem datacenter to AWS and the applications being migrated had a requirement for s...">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+	
+<link rel="stylesheet" href="/css/main.css">
+<link rel="canonical" href="https://a.conversant.engineer/aws%20architecting/2019/08/12/haproxyaws.html">
+<link rel="alternate" type="application/rss+xml" title="A Curious Engineer" href="https://a.conversant.engineer/feed.xml" />
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-143160087-1', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+</head>
+<body>
+  <header class="site-header">
+  <div class="container">
+    <input type="checkbox" id="toggleNavbar">
+    <h1 class="logo"><a href="/">A<span> Curious</span> Engineer</a></h1>
+    <label for="toggleNavbar" role="button" class="toggle-navbar-button">
+      <i class="icon icon-menu"></i>
+      <i class="icon icon-cross"></i>
+    </label>
+    <nav class="navbar">
+      <ul>
+        <li><a href="/" title="Home">Home</a></li>
+        
+          <li><a href="/about" title="About">About</a></li>
+        
+          <li><a href="/blog" title="Blog">Blog</a></li>
+        
+        
+      </ul>
+    </nav>
+  </div>
+</header>
+
+
+<main class="main-container">
+  <div class="container">
+    <article role="article" class="post">
+
+  <div class="card">
+    <header class="post-header">
+      <h1 class="post-title">Layer 4 Load Balancing based on Source IP through HAProxy</h1>
+      <em class="post-meta">
+        <time>Aug 12, 2019</time>
+      </em>
+    </header>
+
+    <div class="post-content">
+      
+      <p>I am currently working on project where we are migrating workloads from on-prem datacenter to AWS and the applications being migrated had a requirement for session affinity based on the source IP address so we implemented a layer 4 load balancer in the architecture. AWS Network Load Balancer which comes to everyone’s mind when we say layer 4 load balancing on AWS looked like an obvious choice but upon investigating it, we found that it routes the requests based on source IP and source port. The source port, being a high port, kept changing for each request and this resulted in requests being sent to different backend servers and session affinity was not being held.</p>
+
+<p>Because of all the above issues, we chose HAProxy which supports routing requests based on source ip apart from various other load balancing algorithms. But for this scenario, we used routing based on source ip. HAProxy only supports open source operating systems and we had to go with Amazon Linux 2 operating system.</p>
+
+<h2> Installing HAProxy </h2>
+
+<p>Once you login into the linux server, run: </p>
+
+<p><code>bash
+sudo yum install -y haproxy
+</code>
+This installs haproxy in the server.</p>
+
+<h2> Configuring HAProxy to balance load on source IP </h2>
+
+<p>Open the HAProxy configuration haproxy.cfg located in /etc/haproxy/haproxy.cfg. To open the configuration file run:</p>
+
+<p><code>bash
+cd /etc/haproxy
+sudo vi haproxy.cfg
+</code>
+ Delete the content inside haproxy.cfg or the easier way is to delete the existing file and create a new file:</p>
+
+<p><code>bash
+sudo rm -f haproxy.cfg
+sudo vi haproxy.cfg
+</code></p>
+
+<h2>Defining the global variables</h2>
+
+<p>There are certain variables that could be defined to be used globally across the configuration. Copy the below the lines in your /etc/haproxy/haproxy.cfg.</p>
+
+<p>```yaml</p>
+
+<p>global
+    log         127.0.0.1 local0          #redrecting the log messages to the local0
+    chroot      /var/lib/haproxy          #change current executing directory to haproxy
+    pidfile     /var/run/haproxy.pid      #creating a pid file to store process id
+    maxconn     50000                     #maximum connections
+    user        haproxy                   #username
+    group       haproxy                   #user group which contains the user haproxy
+    daemon
+    stats socket ipv4@127.0.0.1:9999 level admin #runtime interactive API of haproxy
+    stats socket /var/run/haproxy.sock mode 666 level admin #haproxy runtime API
+    stats timeout 2m                      #timeout of the stats</p>
+
+<p>```</p>
+
+<h2>Defining the default variables</h2>
+
+<p>There are certain variables which would not be changed across the configuration and those variables can be defined together under the defaults section of the config. Copy the below lines after the global section.</p>
+
+<p>```yaml</p>
+
+<p>defaults
+    mode                    tcp                 #the mode of transport protocol
+    log                     global              # what services are being logged.
+    option                  dontlognull         #logging options
+    retries                 9999             <br />
+    timeout queue           60m
+    timeout connect         30s
+    timeout client          60m
+    timeout server          60m
+    timeout check           60s
+    maxconn                 15000</p>
+
+<p>```</p>
+
+<h2>Defining the health dashboard</h2>
+
+<p>We can have a dashboard for this server where we can see the health of the HAProxy server and the health of the backend servers. Copy the below lines after the defaults section</p>
+
+<p>```yaml</p>
+
+<p>frontend stats                  #name of the frontend
+    bind *:8080                 #Binds the port number to access health dashboard
+    mode http                   #protocol mode for displaying the stats
+    stats enable                # enabling the stats
+    stats hide-version
+    stats uri /stats            #defining the uri endpoint path</p>
+
+<p>```
+The dashboard looks like this once we hit the server</p>
+
+<p><img class="mb-2" src="/images/haproxy-health.png" alt="" height="400" width="900" /></p>
+
+<h2>Defining the front end to accept incoming connections</h2>
+
+<p>We need to create a front end to for the users to send requests to. So, copy the lines below after the stats frontend</p>
+
+<p>```yaml
+frontend haproxy_frontend                   #name of the frontend
+    bind *:80                               #listening on port 80
+    default_backend haproxy_backend         #routes to defined backend
+    option tcplog                           #logging format of the server</p>
+
+<p>```</p>
+
+<h2>Defining the back-end to route the incoming requests</h2>
+
+<p>We need to create a backend definition in the config for the HAProxy to know where to route the incoming requests to. HAProxy uses stick tables to store the session affinity information and we can share that table with its peers so that no matter which HAProxy server the incoming request is routed to, the request is sent to the same backend server to which the affinity is present.</p>
+
+<p><code>yaml
+backend haproxy_backend                    #name of the backend
+    mode tcp                               #mode of the traffic tcp or http
+    balance source                         #name of the routing algorithm. 
+    stick-table type ip size 20k expire 8h peers hapeers  #stick table,naming the peers
+    stick on src                           #store the source IP addresses into the stick table
+    server &lt;backend server name1&gt; &lt;IP of backend server1&gt;:80 check port 80 maxconn 5000
+    server &lt;backend server name2&gt; &lt;IP of backend server2&gt;:80 check port 80 maxconn 5000    
+</code>
+If you would like to read more about stick tables and different types of routing algorithms, please refer to 
+	<a href="https://www.haproxy.com/blog/introduction-to-haproxy-stick-tables/">Sticktables on HAProxy</a></p>
+
+<h2>Defining the Peers</h2>
+
+<p>We define the HAProxy peers section by adding the below code block.</p>
+
+<p><code>yaml
+peers hapeers
+    peer &lt;name of peer 1&gt; &lt;IP of peer 1&gt;:1024
+    peer &lt;name of peer 2&gt; &lt;IP of peer 2&gt;:1024
+</code></p>
+
+<h2>Final Config</h2>
+
+<p>Once the above contents are defined, the final config file should look like below:</p>
+
+<p>```yaml
+global
+    log         127.0.0.1 local0
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     50000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket ipv4@127.0.0.1:9999 level admin
+    stats socket /var/run/haproxy.sock mode 666 level admin
+    stats timeout 2m</p>
+
+<p>defaults
+    mode                    tcp
+    log                     global
+    option                  dontlognull
+    retries                 9999
+    timeout queue           60m
+    timeout connect         30s
+    timeout client          60m
+    timeout server          60m
+    timeout check           60s
+    maxconn                 15000</p>
+
+<p>frontend stats
+    bind *:8080
+    mode http
+    stats enable
+    stats hide-version
+    stats uri /stats</p>
+
+<p>frontend haproxy_frontend
+    bind *:80
+    default_backend haproxy_backend
+    option tcplog</p>
+
+<p>backend haproxy_backend
+    mode tcp
+    balance source
+    stick-table type ip size 20k expire 8h peers hapeers
+    stick on src
+    server <backend server="" name1=""> <ip of="" backend="" server1="">:80 check port 80 maxconn 5000
+    server <backend server="" name2=""> <ip of="" backend="" server2="">:80 check port 80 maxconn 5000</ip></backend></ip></backend></p>
+
+<p>peers hapeers
+    peer &lt;name of peer 1&gt; &lt;IP of peer 1&gt;:1024
+    peer &lt;name of peer 2&gt; &lt;IP of peer 2&gt;:1024
+```</p>
+
+<p>I know the article is pretty lengthy and I will not hold you up any longer. I will continue writing about the stick tables configured above and how to test if the stick tables are configured correctly in a different post.</p>
+
+<p>As always, if you can help me out with an alternative approach to solve my problem stated above, please shoot an email at yyellapragada@gmail.com.</p>
+
+<p>Always happy to learn!</p>
+
+
+    </div>
+
+    
+<hr>
+
+<aside id="comments" class="disqus">
+  <h3><i class="icon icon-comments-o"></i> Comments</h3>
+  <div id="disqus_thread"></div>
+  <script>
+    var disqus_config = function() {
+      this.page.url = 'https://a.conversant.engineer/aws%20architecting/2019/08/12/haproxyaws.html';
+      this.page.identifier = '/aws%20architecting/2019/08/12/haproxyaws';
+    };
+    (function() {
+      var d = document,
+      s = d.createElement('script');
+      s.src = '//a-conversant-engineer.disqus.com/embed.js';
+      s.setAttribute('data-timestamp', +new Date());
+      (d.head || d.body).appendChild(s);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+</aside>
+
+
+  </div>
+
+</article>
+
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <ul class="social">
+  <li><a href="https://github.com/YYashwanth" target="_blank"><i class="fa fa-github"></i></a></li>
+  <li><a href="https://www.facebook.com/yashwanth.yellapragada" target="_blank"><i class="fa fa-facebook"></i></a></li>
+  <li><a href="https://www.linkedin.com/in/yyellapragada/" target="_blank"><i class="fa fa-linkedin"></i></a></li>
+</ul>
+    <p class="txt-medium-gray">
+      <small>&copy;2019 All rights reserved. Made with <a href="http://jekyllrb.com/" target="_blank">Jekyll</a> and ♥</small>
+    </p>
+  </div>
+</footer>
+
+
+</body>
+</html>
