@@ -353,7 +353,7 @@ a.nostyle {
 
 .title-space {
     display: grid;
-    grid-template-columns: 8fr 4fr;
+    grid-template-columns: 8fr;
     align-items: center;
     @include media-query($on-palm) {
       grid-template-columns: 12fr;
