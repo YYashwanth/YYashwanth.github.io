@@ -1,16 +1,15 @@
 ---
 layout: default
+type: home
+title: I'm Yashwanth
 ---
 
-<section class="hero">
-  <div class="hero-inner">
-    <div class="container">
-      <img src="{{ site.author.thumb | prepend: site.baseurl }}" alt="author thumb" class="dot">
-      <h3>I'm <strong itemprop="name">{{ site.author.name }}</strong>, a <em itemprop="jobTitle">{{ site.author.job }}</em>.</h3>
-      <h3>{{ site.author.bio }}</h3>
-      <a href="{{ '/about' | prepend: site.baseurl }}" class="button button-ghost" title="about">about</a>
-      <a href="{{ '/blog' | prepend: site.baseurl }}" class="button button-ghost" title="blog">blog</a>
-      {% include social.html %}
-    </div>
-  </div>
-</section>
+
+<p>I'm working as a Cloud Consultant for Deloitte Australia. I have an interest in Cloud Architecture Design and Implementation, Micro Services, DevOps Automation and Python Scripting.</p>
+
+
+<p>My day to day tasks include <b>automating the deployment process using CI/CD pipelines, 
+        research and development of new and efficient procedures to achieve the desired state 
+        of architecture, writing python scripts to automate operations</b>.</p>
+
+{% include expertise.html %}

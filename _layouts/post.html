@@ -1,27 +1,44 @@
 ---
-layout: pages
+layout: default
 ---
+<!--                            
+This layout is used for posts. Changing anything here will affect all posts(not pages)
+ -->
+{% include breadcrumbs.html %}
+ 
+<div class="meta">
+  <p>
+      <small>
+          <span>
+          <i class="fa fa-calendar" aria-hidden="true"></i> {{page.date | date_to_string }}&nbsp;
+          </span>
+          <span>
+              <i class="fa fa-user" aria-hidden="true"></i> {{page.author }}&nbsp;
+          </span>
 
-<article role="article" class="post">
+          <span>
+             <i class="fa fa-clock-o" aria-hidden="true"></i> {% include reading-time.html %}
+          </span>
+      </small>
+  </p>
+</div>
 
-  <div class="card">
-    <header class="post-header">
-      <h1 class="post-title">{{ page.title }}</h1>
-      <em class="post-meta">
-        <time>{{ page.date | date: "%b %-d, %Y" }}{% if page.author %} • {{ page.author }}{% endif %}{% if page.meta %} • {{ page.meta }}{% endif %}</time>
-      </em>
-    </header>
 
-    <div class="post-content">
-      {% if page.image %}
-        <figure class="post-thumbnail {% if page.image %}{% else %}no-image{% endif %}">
-          <img src="{{ page.image }}" alt="{{ page.title }}">
-        </figure>
-      {% endif %}
-      {{ content }}
-    </div>
+<article>
+    {% if site.toc %}{% include toc.html html=content class="toc.rev.clearfix" %}{% endif %}
+    {{content}}
+</article>   
 
-    {% include comments.html %}
-  </div>
+<hr class="dashed">
 
-</article>
+{% if site.share %}
+{% include share-buttons.html %}
+{% endif %}
+
+{% if page.categories %}
+{% include categories-post.html %}
+{% endif %}
+
+{% if site.disqus %}
+{% include disqus.html %}
+{% endif %}

@@ -6,7 +6,11 @@ date: 2019-06-05 16:39:18
 comments: true
 description: "Enforcing Centralised Logging in AWS"
 keywords: "AWS, CloudTrail, DevOps, CloudWatch, MultiAccount, Governance, Monitoring, Logging, Centralised"
-category: AWS Automation
+categories:
+    - Automation
+    - CloudTrail
+    - Centralised Logging
+    - Governance
 tags:
 - AWS
 - Automation
@@ -34,7 +38,7 @@ And if you are new to the concepts and functionalities of AWS Organisations, cro
 <b>Actions to be taken in Parent Account<b>
 1.	Once all the prerequisites have been met, navigate to your parent account’s (root account) CloudWatch console and select “Event Bus” and add a permission for the child account to send events to the parent account by entering the account number of the child account.
 
- <img class="mb-2" src="{{site.baseurl}}/images/parent1.png" alt="" height="400" width="900">
+![Best Jekyll Theme]({{site.baseurl}}/assets/images/parent1.png)
 
  2. Navigate to the Lambda console and create a function and use the code below. The code  is well documented but feel free to drop in a comment for further clarification.
 
@@ -78,7 +82,7 @@ PS: Exception handlers are being included and the work is in progress. The code 
 
 4.	Add another target as a SNS topic, if you want an administrator to be notified of this event. Select the SNS topic you created as the target.
 
-<img class="mb-2" src="{{site.baseurl}}/images/parent2.png" alt="" height="400" width="900">
+![Best Jekyll Theme]({{site.baseurl}}/assets/images/parent2.png)
 
 <b>Actions to be completed in Child Account<b>
 1.	Navigate to the CloudWatch console and create a rule to send any notification to the event bus created in the parent account. Select the “Event bus in another account” as target and enter the account number of the account where we created the event bus.

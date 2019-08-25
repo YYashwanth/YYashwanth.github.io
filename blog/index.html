@@ -1,13 +1,22 @@
 ---
-layout: pages
-pagination:
-  enabled: true
+layout: page
+title: Articles
+description: Find all the posts here.
 ---
 
-<section class="post-list">
-  {% for post in site.posts %}
-    {% include article.html %}
-  {% endfor %}
 
-  {% include pagination.html %}
-</section>
+
+
+    {% for post in paginator.posts %}
+    <a class="nostyle" href="{{site.baseurl}}{{post.url}}">
+        <div class="blog cards borders blog-list" data-aos='fade-up'>
+            <div class="content">
+                <h3 class="title">{{post.title}}</h3>
+                <p class="description">{{post.content | strip_html | truncate: 180 }}</p>
+            </div>
+        </div>
+    </a>
+
+    {% endfor %}
+
+    {% include pagination.html %}

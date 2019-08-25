@@ -6,7 +6,11 @@ date: 2019-08-23 11:30:18
 comments: true
 description: "Highly Available, Self Healing HAProxy Cluster"
 keywords: "AWS, HAProxy, Load Balancer, IP Address, EC2, Source IP, Systems Manager Documents, Lambda, CloudWatch, LifeCycle Hooks"
-category: AWS Architecting
+categories:
+    - HAProxy
+    - Lambda
+    - AutoScaling Groups
+    - CloudWatch Events
 tags:
 - AWS
 - HAProxy
@@ -25,12 +29,12 @@ We deployed the HAProxy servers in auto scaling groups and put a network load ba
 But when a linux server comes up in the ASG, we are manually configuring them to work as a HAProxy server and this is how automated the entire process:
 1) We create lifecycle hooks, for terminate and launch events, in the auto scaling groups 
 
-<img class="mb-2" src="{{site.baseurl}}/images/ASGHooks.png" alt="" height="400" width="900">
+![Best Jekyll Theme]({{site.baseurl}}/assets/images/ASGHooks.png)
 
 
 2) Create a cloud watch rule to trigger a lambda function based on those ASG lifecycle events
 
-<img class="mb-2" src="{{site.baseurl}}/images/CWRule.png" alt="" height="400" width="900">
+![Best Jekyll Theme]({{site.baseurl}}/assets/images/CWRule.png)
 
 3) Program the lambda function to SSM documents on the instance, that triggered the event, to configure HAProxy server and update the cluster information in the remaining HAproxy servers so they can share the same stick table.
 
