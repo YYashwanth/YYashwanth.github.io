@@ -6,7 +6,7 @@ description: I would love to learn if you think I can improve my approach. Drop 
 ---
 
 ### Write to me
-I would love to learn if you think I can improve my approach. Drop me message and let's catch up!
+If you'd like to get in touch, Drop me message and let's catch up!
 
 
 <form action="https://formspree.io/{{site.data.main.email}}" method="POST">
