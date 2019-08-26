@@ -32,7 +32,7 @@ include:
 
 # Google Ananlytics Tracker.
 # Sign up with Google analytics and replce with your analytics ID.
-analytics: UA-143160087-1
+analytics: UA-143160087-2
 
 # Table of contents in each post
 # Change the value to 'no' if Table of Contents is not required.
