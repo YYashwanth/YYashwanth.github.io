@@ -16,9 +16,9 @@ tags:
 - EC2
 - Load Balancing
 ---
-I am currently working on project where we are migrating workloads from on-prem datacenter to AWS and the applications being migrated had a requirement for session affinity based on the source IP address so we implemented a layer 4 load balancer in the architecture. AWS Network Load Balancer which comes to everyone's mind when we say layer 4 load balancing on AWS looked like an obvious choice but upon investigating it, we found that it routes the requests based on source IP and source port. The source port, being a high port, kept changing for each request and this resulted in requests being sent to different backend servers and session affinity was not being held.
+While playing with Load Balancers during my preparation for AWS Certifications, I found that only Network Load Balancer supports source IP based routing. The only drawback is that it also includes source port in the routing algorithm while making a routing decision. I wanted a load balancer which solely routes using source IP. 
 
-Because of all the above issues, we chose HAProxy which supports routing requests based on source ip apart from various other load balancing algorithms. But for this scenario, we used routing based on source ip. HAProxy only supports open source operating systems and we had to go with Amazon Linux 2 operating system.
+I looked out in the market to see which product can help me. I started comparing HAProxy and NGINX as they've got quite a good reputation in the market. I thought NGINX would meet the requirements but it routes based only on the first 2 octets. The enterprise version of NGINX supports routing based on complete source IP. But the open source version of HAProxy supports routing based on source IP. So I chose HAProxy to PoC a layer 4 load balancer. HAProxy only supports open source operating systems and we had to go with Amazon Linux 2 operating system.
 
 <h2> Installing HAProxy </h2>
 
@@ -104,7 +104,7 @@ frontend stats                  #name of the frontend
 ```
 The dashboard looks like this once we hit the server
 
-<img class="mb-2" src="{{site.baseurl}}/images/haproxy-health.png" alt="" height="400" width="900">
+<img class="mb-2" src="{{site.baseurl}}/assets/images/haproxy-health.png" alt="" height="400" width="900">
 
 <h2>Defining the front end to accept incoming connections</h2>
 
@@ -117,6 +117,28 @@ frontend haproxy_frontend                   #name of the frontend
     option tcplog                           #logging format of the server
 
 ```
+<h2>Before going to back-end configuration, lets read about Stick Tables</h2>
+
+Let's say you are trying to create a highly available HAProxy load balancer and wanted to make sure that even if one HAProxy server goes down, you can still reach your back end targets. That's a fair requirement, right? But how are the HAProxy servers going to remember which backend server were sent to earlier? If there are 2 HAProxy servers HA-1 and HA-2 and HA-1 went down, how will HA-2 know that HA-1 sent you to BackendServer-A earlier? 
+
+To help answer this, HAProxy provides a feature called Stick Tables where they store the source IP and the destination server that IP has been routed to. This stick table can be shared with other HAProxy servers, which are part of the same cluster, so that the routing can be consistent.
+
+If you would like to read more about stick tables and different types of routing algorithms, please refer to <a href="https://www.haproxy.com/blog/introduction-to-haproxy-stick-tables/">Sticktables on HAProxy</a>
+
+![HAProxy-Server-A]({{site.baseurl}}/assets/images/HAP-ServerA.png)
+
+![HAProxy-Server-B]({{site.baseurl}}/assets/images/HAP-ServerB.png)
+
+In the above images, you can see that the entries are same in two different servers. Let me explain the most relevant entries from left to right.
+<ul>
+<li>The first entry on the left is the address id allocated to store the entry</li>
+<li>The <b>Key</b> entries are where the IP address is stored </li>
+<li>The <b>exp</b> field shows a counter which servers a TTL. As soon as it reaches 0, the entry is removed from the stick table</li>
+<li>The <b>server_id</b> field shows the destination server to which the source request was routed to.</li>
+</ul>
+
+If you would like to read more about defining HAProxy clusters or peering configuration please refer to <a href="http://haproxy.tech-notes.net/3-5-peers/">HAProxy Peers</a>
+
 
 <h2>Defining the back-end to route the incoming requests</h2>
 
@@ -126,13 +148,12 @@ We need to create a backend definition in the config for the HAProxy to know whe
 backend haproxy_backend                    #name of the backend
     mode tcp                               #mode of the traffic tcp or http
     balance source                         #name of the routing algorithm. 
-    stick-table type ip size 20k expire 8h peers hapeers  #stick table,naming the peers
+    stick-table type ip size 20k expire 8h peers haproxy-cluster  #stick table,naming the peers
     stick on src                           #store the source IP addresses into the stick table
     server <backend server name1> <IP of backend server1>:80 check port 80 maxconn 5000
     server <backend server name2> <IP of backend server2>:80 check port 80 maxconn 5000    
 ```
-If you would like to read more about stick tables and different types of routing algorithms, please refer to 
-	<a href="https://www.haproxy.com/blog/introduction-to-haproxy-stick-tables/">Sticktables on HAProxy</a>
+
 
 <h2>Defining the Peers</h2>
 

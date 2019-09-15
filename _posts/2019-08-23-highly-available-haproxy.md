@@ -22,21 +22,27 @@ tags:
 - Systems Manager Documents
 ---
 
-In my previous article I mentioned that we used HAproxy in our project. Then I realised that we deployed HAproxy in a non-HA way. As HAProxy plays a very important role in the functionality of the application, we needed minimal downtime of the HAProxy server.
+In my previous [article](../haproxyaws) I set up a layer 4 load balancer using HAProxy in a peering configuration. But 
+<ul>
+  <li>what if a server goes down? I know you are thinking about auto-scaling groups. </li>
+  <li>But how would you configure the server to work as a HAProxy peer? </li>
+  <li>How would it know the existing stick table information from the other HAProxy server?</li>
+</ul>
 
-We deployed the HAProxy servers in auto scaling groups and put a network load balancer in front of them to route the requests to either of the HAProxy servers. As both the HAProxy servers share the same stick table, it will not matter to which HAProxy server the request went to. It would still get delivered to the right instance.
 
-But when a linux server comes up in the ASG, we are manually configuring them to work as a HAProxy server and this is how automated the entire process:
-1) We create lifecycle hooks, for terminate and launch events, in the auto scaling groups 
+I deployed the HAProxy servers in auto scaling groups and put a network load balancer in front of them to route the requests to either of the HAProxy servers. As both the HAProxy servers share the same stick table, it will not matter to which HAProxy server the request went to. It would still get delivered to the right instance.
+
+But when a linux server comes up in the ASG, I am manually configuring it to work as a HAProxy server and this is how I automated the entire process:
+1) I created lifecycle hooks, for terminate and launch events, in the auto scaling groups 
 
 ![Best Jekyll Theme]({{site.baseurl}}/assets/images/ASGHooks.png)
 
 
 2) Create a cloud watch rule to trigger a lambda function based on those ASG lifecycle events
 
-![Best Jekyll Theme]({{site.baseurl}}/assets/images/CWRule.png)
+![CloudWatch Rule]({{site.baseurl}}/assets/images/CWRule.png)
 
-3) Program the lambda function to SSM documents on the instance, that triggered the event, to configure HAProxy server and update the cluster information in the remaining HAproxy servers so they can share the same stick table.
+3) Program the lambda function to run SSM documents to configure HAProxy server and update the cluster information in the remaining HAproxy servers so they can share the same stick table.
 
 4) Also program the lambda to remove the instance from the cluster config in remaining servers when an instance is being scaled in.
 
