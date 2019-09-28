@@ -7,10 +7,7 @@ comments: true
 description: "Highly Available, Self Healing HAProxy Cluster"
 keywords: "AWS, HAProxy, Load Balancer, IP Address, EC2, Source IP, Systems Manager Documents, Lambda, CloudWatch, LifeCycle Hooks"
 categories:
-    - HAProxy
-    - Lambda
-    - AutoScaling Groups
-    - CloudWatch Events
+   - Amazon Web Services
 tags:
 - AWS
 - HAProxy

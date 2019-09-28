@@ -8,11 +8,11 @@ email: yyellapragada@gmail.com # The contact form submissions will be received i
 # Menu items in the sidebar
 # Use a maximum of 3 items
 menu:
-  - title: Projects
-    link: /projects/
+  #- title: Projects
+  #  link: /projects/
 
   - title: Blog
-    link: /blog/
+    link: /categories/
 
   - title: Contact
     link: /contact/

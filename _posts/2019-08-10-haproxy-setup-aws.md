@@ -7,9 +7,7 @@ comments: true
 description: "Layer 4 Load Balancing"
 keywords: "AWS, HAProxy, Load Balancer, IP Address, EC2, Source IP"
 categories:
-    - HAProxy
-    - Load Balancer
-    - Proxies
+    - Amazon Web Services
 tags:
 - AWS
 - HAProxy

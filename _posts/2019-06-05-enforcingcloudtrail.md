@@ -7,10 +7,7 @@ comments: true
 description: "Enforcing Centralised Logging in AWS"
 keywords: "AWS, CloudTrail, DevOps, CloudWatch, MultiAccount, Governance, Monitoring, Logging, Centralised"
 categories:
-    - Automation
-    - CloudTrail
-    - Centralised Logging
-    - Governance
+    - Amazon Web Services
 tags:
 - AWS
 - Automation

@@ -7,10 +7,7 @@ comments: true
 description: "Bootstrapping Windows EC2"
 keywords: "AWS, Bootstrapping, AWS Systems Manager, AWS System Manager Documents, Cloudformation, Automation, SSM Documents"
 categories:
-    - Automation
-    - AWS CloudFormation
-    - AWS Systems Manager
-    - Governance
+    - Amazon Web Services
 tags:
 - AWS
 - Automation
