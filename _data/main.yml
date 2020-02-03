@@ -38,19 +38,27 @@ social:
 
 expertise:
   - title: AWS
-    level: 75
-    color: rgb(247, 205, 182)
+    level: 80
+    color: rgb(255, 153, 51)
 
   - title: Python
+    level: 70
+    color: rgb(204, 204, 0)
+
+  - title: Kubernetes
     level: 65
     color: rgb(113, 178, 222)
+
+  - title: IaC
+    level: 75
+    color: rgb(255, 153, 153)
 
   - title: SQL
     level: 60
     color: rgb(80, 185, 185)
 
   - title: Docker
-    level: 40
+    level: 50
     color: rgb(124, 142, 222)
 
   - title: CI/CD
@@ -58,7 +66,7 @@ expertise:
     color: rgb(160, 158, 158)
 
   - title: Ansible
-    level: 50
+    level: 40
     color: rgb(112, 195, 148)
 
   - title: Photoshop
